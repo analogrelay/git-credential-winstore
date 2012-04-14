@@ -9,25 +9,31 @@ namespace gitstorecred
 {
     class Program
     {
-        static Regex GitRequestRegex = new Regex(@"^(?<req>(Username)|(Password)) for '(?<url>[^']*)':\s*$");
+        static Regex GitRequestRegex = new Regex(@"(?<req>(Username)|(Password)) for '(?<url>[^']*)':\s*");
 
         static void Main(string[] args)
         {
-            // Parse a line off standard in
-            string line = Console.ReadLine();
-            Match m = GitRequestRegex.Match(line, 0);
+            // Parse args
+            string cmd = String.Join(" ", args);
+            if (String.IsNullOrWhiteSpace(cmd))
+            {
+                cmd = Console.ReadLine();
+            }
+
+            Match m = GitRequestRegex.Match(cmd);
+            if (!m.Success)
+            {
+                Console.WriteLine("Unexpected arguments");
+                return;
+            }
             string request = m.Groups["req"].Value;
             Uri url = (new Uri(m.Groups["url"].Value));
 
             // Extract the URL without user name to use as realm
             string realm = url.GetComponents(
-                UriComponents.SchemeAndServer | 
-                UriComponents.Port | 
-                UriComponents.PathAndQuery, 
+                UriComponents.SchemeAndServer, 
                 UriFormat.Unescaped);
-
-            // Try to get a credential
-
+            
             bool save = true;
             int userNameSize = 255;
             int domainNameSize = 255;
@@ -40,20 +46,22 @@ namespace gitstorecred
                 NativeMethods.CREDUI_FLAGS.EXCLUDE_CERTIFICATES |
                 NativeMethods.CREDUI_FLAGS.GENERIC_CREDENTIALS |
                 NativeMethods.CREDUI_FLAGS.SHOW_SAVE_CHECK_BOX;
+            string message = realm;
             if(String.Equals("Password", request, StringComparison.OrdinalIgnoreCase) && !String.IsNullOrEmpty(url.UserInfo)) {
-                userName.Append(url.UserInfo);
+                message = "anurse on " + realm;
                 flags |= NativeMethods.CREDUI_FLAGS.KEEP_USERNAME;
             }
 
             NativeMethods.CREDUI_INFO info = new NativeMethods.CREDUI_INFO() {
                 pszCaptionText = "Git Credentials",
-                pszMessageText = "Enter your credentials for " + realm,
+                pszMessageText = "Enter your credentials for " + message,
             };
             info.cbSize = Marshal.SizeOf(info);
 
+            string target = realm;
             NativeMethods.CredUIReturnCodes ret = NativeMethods.CredUIPromptForCredentials(
                 ref info,
-                targetName: "gitstorecred_" + realm,
+                targetName: target,
                 reserved1: IntPtr.Zero,
                 iError: 0,
                 userName: userName,
@@ -70,9 +78,9 @@ namespace gitstorecred
             }
 
             if(String.Equals("Username", request, StringComparison.OrdinalIgnoreCase)) {
-                Console.WriteLine(userName.ToString());
+                Console.Write(userName.ToString());
             } else if(String.Equals("Password", request, StringComparison.OrdinalIgnoreCase)) {
-                Console.WriteLine(password.ToString());
+                Console.Write(password.ToString());
             }
         }
     }
