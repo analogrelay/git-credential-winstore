@@ -31,15 +31,8 @@ namespace Git.Credential.WinStore
             string cmd;
             if (args.Length == 0)
             {
-#if DEBUG
-                // When launched by F5 in VS, I'd rather not have to keep changing the command line arguments
-                // to test each command. So if launched with no args, we take the command as one of the "parameters"
-                // specified in key-value pairs.
-                cmd = parameters.GetOrDefault("cmd", "get");
-#else
                 InstallTheApp();
                 return;
-#endif
             }
                 
             cmd = args[0];
