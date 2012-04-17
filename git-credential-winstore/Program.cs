@@ -77,7 +77,7 @@ namespace Git.Credential.WinStore
 
         private static void WriteUsage()
         {
-            Console.Error.WriteLine("Figure it out yourself. But seriously, I just haven't written this yet. Sorry :(");
+            Console.Error.WriteLine("This application is designed to be used by git as a credential helper. See here the following like for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
