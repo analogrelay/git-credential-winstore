@@ -115,7 +115,6 @@ namespace Git.Credential.WinStore
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
             Process.Start("git", "config --global credential.helper !~/AppData/Roaming/GitCredStore/git-credential-winstore");
-            Environment.SetEnvironmentVariable("EDITOR", "~/AppData/Roaming/GitPad/GitPad.exe", EnvironmentVariableTarget.User);
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
