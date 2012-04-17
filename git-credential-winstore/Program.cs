@@ -124,7 +124,12 @@ namespace Git.Credential.WinStore
                 string target = GetTargetName(url);
                 if (!NativeMethods.CredRead(target, NativeMethods.CRED_TYPE.GENERIC, 0, out credPtr))
                 {
-                    // Don't have a credential for this user.
+                    // Don't have a credential for this user. Are we on XP? If so, sorry no dice.
+                    if (OnXP())
+                    {
+                        // Users will get a Git prompt for user name and password. We'll still store them.
+                        yield break;
+                    }
                     credPtr = IntPtr.Zero;
 
                     // If we have a username, pack an input authentication buffer
@@ -205,6 +210,13 @@ namespace Git.Credential.WinStore
                     NativeMethods.CredFree(credPtr);
                 }
             }
+        }
+
+        private static bool OnXP()
+        {
+            // I know, version detection a Bad Thing(TM). But "feature detection" is supposed to be done
+            // via checking DLL exports, which is gross in C#...
+            return Environment.OSVersion.Version.Major == 5;
         }
 
         private static bool UnPackAuthBuffer(IntPtr buffer, int size, out string userName, out string password)
