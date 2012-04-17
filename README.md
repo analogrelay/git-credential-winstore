@@ -20,3 +20,6 @@ That's not a question.
 
 ### But I actually have another question...
 Ok, you can email me at [andrew@andrewnurse.net](mailto:andrew@andrewnurse.net).
+
+## License
+This code is Copyright Andrew Nurse 2012. You are hereby granted a license to use the software and code under the terms of the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0.html)
