@@ -5,7 +5,7 @@ A cleaner installer is coming soon, but for now...
 
 1. Download the git-credential-winstore.exe file from the downloads section
 2. Put it in your path
-3. Run "git.config credential.helper winstore"
+3. Run "git config credential.helper winstore"
 
 ## FAQs
 
