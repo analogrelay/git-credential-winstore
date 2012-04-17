@@ -84,6 +84,8 @@ namespace Git.Credential.WinStore
         {
             // Build the URL
             Uri url = ExtractUrl(args);
+            string userName = args.GetOrDefault("username", null);
+            string password = null;
             
             IntPtr credPtr = IntPtr.Zero;
             try
@@ -93,13 +95,78 @@ namespace Git.Credential.WinStore
                 if (!NativeMethods.CredRead(target, NativeMethods.CRED_TYPE.GENERIC, 0, out credPtr))
                 {
                     // Don't have a credential for this user.
-                    yield break;
-                }
+                    credPtr = IntPtr.Zero;
 
-                // Decode the credential
-                NativeMethods.CREDENTIAL cred = (NativeMethods.CREDENTIAL)Marshal.PtrToStructure(credPtr, typeof(NativeMethods.CREDENTIAL));
-                yield return Tuple.Create("username", cred.userName);
-                yield return Tuple.Create("password", Marshal.PtrToStringBSTR(cred.credentialBlob));
+                    // If we have a username, pack an input authentication buffer
+                    Tuple<int, IntPtr> inputBuffer = null;;
+                    IntPtr outputBuffer = IntPtr.Zero;
+                    int outputBufferSize = 0;
+                    try
+                    {
+                        inputBuffer = PackUserNameBuffer(userName);
+                        if (inputBuffer == null) { yield break; }
+
+                        // Setup UI
+                        NativeMethods.CREDUI_INFO ui = new NativeMethods.CREDUI_INFO()
+                        {
+                            pszCaptionText = "Git Credentials",
+                            pszMessageText = "Enter your credentials for: " + url.AbsoluteUri
+                        };
+                        ui.cbSize = Marshal.SizeOf(ui);
+
+                        // Prompt!
+                        int authPackage = 0;
+                        bool save = false;
+                        var ret = NativeMethods.CredUIPromptForWindowsCredentials(
+                            uiInfo: ref ui,
+                            authError: 0,
+                            authPackage: ref authPackage,
+                            InAuthBuffer: inputBuffer.Item2,
+                            InAuthBufferSize: inputBuffer.Item1,
+                            refOutAuthBuffer: out outputBuffer,
+                            refOutAuthBufferSize: out outputBufferSize,
+                            fSave: ref save,
+                            flags: NativeMethods.PromptForWindowsCredentialsFlags.CREDUIWIN_GENERIC);
+                        if (ret != NativeMethods.CredUIReturnCodes.NO_ERROR)
+                        {
+                            Console.Error.WriteLine("Error prompting for credentials: " + ret.ToString());
+                            yield break;
+                        }
+                    }
+                    finally
+                    {
+                        if (inputBuffer != null && inputBuffer.Item2 != IntPtr.Zero)
+                        {
+                            Marshal.FreeHGlobal(inputBuffer.Item2);
+                        }
+                    }
+
+                    try
+                    {
+                        // Unpack
+                        if (!UnPackAuthBuffer(outputBuffer, outputBufferSize, out userName, out password))
+                        {
+                            yield break;
+                        }
+                    }
+                    finally
+                    {
+                        if (outputBuffer != IntPtr.Zero)
+                        {
+                            Marshal.FreeHGlobal(outputBuffer);
+                        }
+                    }
+                }
+                else
+                {
+                    // Decode the credential
+                    NativeMethods.CREDENTIAL cred = (NativeMethods.CREDENTIAL)Marshal.PtrToStructure(credPtr, typeof(NativeMethods.CREDENTIAL));
+                    userName = cred.userName;
+                    password = Marshal.PtrToStringBSTR(cred.credentialBlob);
+                }
+                    
+                yield return Tuple.Create("username", userName);
+                yield return Tuple.Create("password", password);
             }
             finally
             {
@@ -108,6 +175,73 @@ namespace Git.Credential.WinStore
                     NativeMethods.CredFree(credPtr);
                 }
             }
+        }
+
+        private static bool UnPackAuthBuffer(IntPtr buffer, int size, out string userName, out string password)
+        {
+            userName = String.Empty;
+            password = String.Empty;
+
+            StringBuilder userNameBuffer = new StringBuilder(255);
+            StringBuilder passwordBuffer = new StringBuilder(255);
+            StringBuilder domainBuffer = new StringBuilder(255);
+            int userNameSize = 255;
+            int passwordSize = 255;
+            int domainSize = 255;
+            if (!NativeMethods.CredUnPackAuthenticationBuffer(
+                dwFlags: 0,
+                pAuthBuffer: buffer,
+                cbAuthBuffer: size,
+                pszUserName: userNameBuffer,
+                pcchMaxUserName: ref userNameSize,
+                pszDomainName: domainBuffer,
+                pcchMaxDomainame: ref domainSize,
+                pszPassword: passwordBuffer,
+                pcchMaxPassword: ref passwordSize))
+            {
+                Console.Error.WriteLine("Unable to unpack credential: " + GetLastErrorMessage());
+                return false;
+            }
+            userName = userNameBuffer.ToString();
+            password = passwordBuffer.ToString();
+            return true;
+        }
+
+        private static Tuple<int, IntPtr> PackUserNameBuffer(string userName)
+        {
+            if (String.IsNullOrWhiteSpace(userName))
+            {
+                return Tuple.Create(0, IntPtr.Zero);
+            }
+            IntPtr buf = IntPtr.Zero;
+            int size = 0;
+            
+            // First, calculate size. (buf == IntPtr.Zero)
+            var result = NativeMethods.CredPackAuthenticationBuffer(
+                dwFlags: 4, // CRED_PACK_GENERIC_CREDENTIALS
+                pszUserName: userName,
+                pszPassword: String.Empty,
+                pPackedCredentials: buf,
+                pcbPackedCredentials: ref size);
+            Debug.Assert(!result);
+            if (Marshal.GetLastWin32Error() != 122)
+            {
+                Console.Error.WriteLine("Unable to calculate size of packed authentication buffer: " + GetLastErrorMessage());
+                return null;
+            }
+
+            buf = Marshal.AllocHGlobal(size);
+            if (!NativeMethods.CredPackAuthenticationBuffer(
+                dwFlags: 4, // CRED_PACK_GENERIC_CREDENTIALS
+                pszUserName: userName,
+                pszPassword: String.Empty,
+                pPackedCredentials: buf,
+                pcbPackedCredentials: ref size))
+            {
+                Console.Error.WriteLine("Unable to pack incoming username: " + GetLastErrorMessage());
+                return null;
+            }
+            return Tuple.Create(size, buf);
         }
 
         static IEnumerable<Tuple<string, string>> StoreCommand(IDictionary<string, string> args)
