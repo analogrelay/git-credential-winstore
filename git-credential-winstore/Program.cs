@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace Git.Credential.WinStore
 {
@@ -23,9 +26,6 @@ namespace Git.Credential.WinStore
         {
             TryLaunchDebugger(ref args);
 
-            // Read arguments
-            IDictionary<string, string> parameters = ReadGitParameters();
-
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
@@ -37,14 +37,14 @@ namespace Git.Credential.WinStore
                 // specified in key-value pairs.
                 cmd = parameters.GetOrDefault("cmd", "get");
 #else
-                WriteUsage();
+                InstallTheApp();
                 return;
 #endif
             }
-            else
-            {
-                cmd = args[0];
-            }
+                
+            cmd = args[0];
+
+            IDictionary<string, string> parameters = ReadGitParameters();
 
             if (!_commands.TryGetValue(cmd, out command))
             {
@@ -54,6 +54,7 @@ namespace Git.Credential.WinStore
             IDictionary<string, string> response = command(parameters).ToDictionary(
                 t => t.Item1,
                 t => t.Item2);
+
             WriteGitParameters(response);
         }
 
@@ -94,6 +95,26 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("If you see this. git-credential-winstore is correctly installed!");
             Console.Error.WriteLine("This application is designed to be used by git as a credential helper and should not be invoked separately");
             Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
+        }
+
+        private static void InstallTheApp()
+        {
+            if (MessageBox.Show("Do you want to install git-credential-winstore to prompt for passwords?",
+                "Installing git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
+            {
+                return;
+            }
+
+            var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
+            if (!target.Exists)
+            {
+                target.Create();
+            }
+
+            var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
+            File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
+
+            Process.Start("git", "config --global credential.helper !~/AppData/Roaming/GitCredStore/git-credential-winstore");
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
