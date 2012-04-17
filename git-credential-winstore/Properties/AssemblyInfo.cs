@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("getcred")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("git-credential-winstore")]
+[assembly: AssemblyDescription("Git Credential Helper which uses Windows Credential UI prompt and stores credentials in Windows Credential Store")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
-[assembly: AssemblyProduct("getcred")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2012")]
+[assembly: AssemblyCompany("VibrantCode")]
+[assembly: AssemblyProduct("git-credential-winstore")]
+[assembly: AssemblyCopyright("Copyright © Andrew Nurse 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
