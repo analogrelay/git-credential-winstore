@@ -21,12 +21,7 @@ namespace Git.Credential.WinStore
 
         static void Main(string[] args)
         {
-            if (args.Length > 0 && args[0] == "-d")
-            {
-                Console.Error.WriteLine("Launching debugger...");
-                Debugger.Launch();
-                args = args.Skip(1).ToArray();
-            }
+            TryLaunchDebugger(ref args);
 
             // Read arguments
             IDictionary<string, string> parameters = ReadGitParameters();
@@ -36,8 +31,15 @@ namespace Git.Credential.WinStore
             string cmd;
             if (args.Length == 0)
             {
-                // Debugging mode, cmd is a parameter
+#if DEBUG
+                // When launched by F5 in VS, I'd rather not have to keep changing the command line arguments
+                // to test each command. So if launched with no args, we take the command as one of the "parameters"
+                // specified in key-value pairs.
                 cmd = parameters.GetOrDefault("cmd", "get");
+#else
+                WriteUsage();
+                return;
+#endif
             }
             else
             {
@@ -53,6 +55,18 @@ namespace Git.Credential.WinStore
                 t => t.Item1,
                 t => t.Item2);
             WriteGitParameters(response);
+        }
+
+        // Conditional methods can return anything, so we use a ref arg... :S
+        [Conditional("DEBUG")]
+        private static void TryLaunchDebugger(ref string[] args)
+        {
+            if (args.Length > 0 && args[0] == "-d")
+            {
+                Console.Error.WriteLine("Launching debugger...");
+                Debugger.Launch();
+                args = args.Skip(1).ToArray();
+            }
         }
 
         private static void WriteGitParameters(IDictionary<string, string> response)
@@ -77,7 +91,9 @@ namespace Git.Credential.WinStore
 
         private static void WriteUsage()
         {
-            Console.Error.WriteLine("This application is designed to be used by git as a credential helper. See here the following like for more info: http://www.manpagez.com/man/1/git-credential-cache/");
+            Console.Error.WriteLine("If you see this. git-credential-winstore is correctly installed!");
+            Console.Error.WriteLine("This application is designed to be used by git as a credential helper and should not be invoked separately");
+            Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
