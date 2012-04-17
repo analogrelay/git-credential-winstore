@@ -5,6 +5,8 @@ using System.Text;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Threading;
 
 namespace Git.Credential.WinStore
 {
@@ -19,6 +21,13 @@ namespace Git.Credential.WinStore
 
         static void Main(string[] args)
         {
+            if (args.Length > 0 && args[0] == "-d")
+            {
+                Console.Error.WriteLine("Launching debugger...");
+                Debugger.Launch();
+                args = args.Skip(1).ToArray();
+            }
+
             // Read arguments
             IDictionary<string, string> parameters = ReadGitParameters();
 
@@ -50,9 +59,8 @@ namespace Git.Credential.WinStore
         {
             foreach (var pair in response)
             {
-                Console.WriteLine("{0}={1}", pair.Key, pair.Value);
+                Console.Write("{0}={1}\n", pair.Key, pair.Value);
             }
-            Console.WriteLine();
         }
 
         private static IDictionary<string, string> ReadGitParameters()
@@ -69,7 +77,7 @@ namespace Git.Credential.WinStore
 
         private static void WriteUsage()
         {
-            Console.WriteLine("Figure it out yourself. But seriously, I just haven't written this yet. Sorry :(");
+            Console.Error.WriteLine("Figure it out yourself. But seriously, I just haven't written this yet. Sorry :(");
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
