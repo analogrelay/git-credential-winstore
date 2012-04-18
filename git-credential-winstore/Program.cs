@@ -15,6 +15,12 @@ namespace Git.Credential.WinStore
 {
     class Program
     {
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
+        public static extern int GetShortPathName(
+            [MarshalAs(UnmanagedType.LPTStr)] string path,
+            [MarshalAs(UnmanagedType.LPTStr)] StringBuilder shortPath,
+            int shortPathLength);
+
         private static Dictionary<string, Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>>> _commands = new Dictionary<string, Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>>>(StringComparer.OrdinalIgnoreCase)
         {
             { "get", GetCommand },
@@ -107,7 +113,14 @@ namespace Git.Credential.WinStore
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start("git", "config --global credential.helper !~/AppData/Roaming/GitCredStore/git-credential-winstore");
+            var path = dest.FullName;
+            var shortPath = new StringBuilder(255);
+            GetShortPathName(path, shortPath, shortPath.Capacity);
+            if (shortPath.Length > 0)
+            {
+                path = shortPath.ToString().ToLower();
+            }
+            Process.Start("git", string.Format("config --global credential.helper !\"{0}\"", path.Replace('\\', '/')));
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
