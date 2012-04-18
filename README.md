@@ -10,6 +10,9 @@ This application is a small helper app designed to follow the git credentials AP
 ### Why doesn't it work?
 Make sure you're running the latest version of msysgit. The credential API is fairly new. I've tested this on version 1.7.10.
 
+### Why doesn't it install?
+Make sure you're running with GIT on your PATH (perhaps by running from the GIT bash shell)
+
 ### Where are you storing my credentials?
 This app just uses the existing Windows Credential Store to hold your credentials. You can see the stored credentials by going to Control Panel > User Accounts > Credential Manager and choosing "Windows Credentials". The entries starting "git:" are from git-credential-winstore.
 
