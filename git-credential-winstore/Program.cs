@@ -25,6 +25,7 @@ namespace Git.Credential.WinStore
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
+            if (TrySilentInstall(ref args)) { return; }
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
@@ -63,6 +64,19 @@ namespace Git.Credential.WinStore
             }
         }
 
+        private static bool TrySilentInstall(ref string[] args)
+        {
+            if (args.Length > 0 && args[0] == "-s")
+            {
+                Console.Out.WriteLine("Silently Installing...");
+                InstallTheApp(true);
+                args = args.Skip(1).ToArray();
+                return true;
+            }
+
+            return false;
+        }
+
         private static void WriteGitParameters(IDictionary<string, string> response)
         {
             foreach (var pair in response)
@@ -90,12 +104,15 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
-        private static void InstallTheApp()
+        private static void InstallTheApp(bool silent = false)
         {
-            if (MessageBox.Show("Do you want to install git-credential-winstore to prompt for passwords?",
-                "Installing git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
+            if(!silent)
             {
-                return;
+                if (MessageBox.Show("Do you want to install git-credential-winstore to prompt for passwords?",
+                    "Installing git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
+                {
+                    return;
+                }
             }
 
             var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
