@@ -107,7 +107,7 @@ namespace Git.Credential.WinStore
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start("git", "config --global credential.helper !~/AppData/Roaming/GitCredStore/git-credential-winstore");
+            Process.Start("git", string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
