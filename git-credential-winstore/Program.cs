@@ -40,6 +40,12 @@ namespace Git.Credential.WinStore
 
             IDictionary<string, string> parameters = ReadGitParameters();
 
+            if (cmd == "debug")
+            {
+                cmd = parameters["cmd"];
+                parameters.Remove("cmd");
+            }
+
             if (!_commands.TryGetValue(cmd, out command))
             {
                 WriteUsage();
@@ -131,6 +137,11 @@ namespace Git.Credential.WinStore
         {
             // Build the URL
             Uri url = ExtractUrl(args);
+            if (url == null)
+            {
+                yield break;
+            }
+
             string userName = args.GetOrDefault("username", null);
             string password = null;
             
@@ -162,7 +173,7 @@ namespace Git.Credential.WinStore
                         NativeMethods.CREDUI_INFO ui = new NativeMethods.CREDUI_INFO()
                         {
                             pszCaptionText = "Git Credentials",
-                            pszMessageText = "Enter your credentials for: " + url.AbsoluteUri
+                            pszMessageText = "Enter your credentials for: " + GetHost(url)
                         };
                         ui.cbSize = Marshal.SizeOf(ui);
 
@@ -360,18 +371,29 @@ namespace Git.Credential.WinStore
 
         private static Uri ExtractUrl(IDictionary<string, string> args)
         {
-            Uri url = new UriBuilder()
+            // Manually build a string (tried a UriBuilder, but Git gives us credentials and port numbers so it's difficult)
+            string scheme = args.GetOrDefault("protocol", "https");
+            string host = args.GetOrDefault("host", "no-host.git");
+            string path = args.GetOrDefault("path", "/");
+
+            string candidateUrl = String.Format("{0}://{1}{2}", scheme, host, path);
+            Uri url;
+            if (!Uri.TryCreate(candidateUrl, UriKind.Absolute, out url))
             {
-                Scheme = args.GetOrDefault("protocol", "https"),
-                Host = args.GetOrDefault("host", "no-host.git"),
-                Path = args.GetOrDefault("path", "/")
-            }.Uri;
+                Console.Error.WriteLine("Failed to parse url: {0}", candidateUrl);
+                return null;
+            }
             return url;
         }
 
         private static string GetTargetName(Uri url)
         {
-            return "git:" + url.AbsoluteUri;
+            return "git:" + GetHost(url);
+        }
+
+        private static string GetHost(Uri url)
+        {
+            return url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
         }
     }
 }
