@@ -24,6 +24,9 @@ Ok, you can email me at [andrew@andrewnurse.net](mailto:andrew@andrewnurse.net).
 
 ## Special Thanks
 * [Paul Betts](http://paulbetts.org/) for creating our handy-dandy installer.
+* [Matt Wrock](https://github.com/mwrock) for adding a silent option to the installer.
+* [mattn](https://github.com/mattn) for adding support for Windows XP.
+* [Marc Brooks](https://github.com/IDisposable) for some readme tweaks.
 
 ## License
 This code is Copyright Andrew Nurse and other contributors 2012. You are hereby granted a license to use the software and code under the terms of the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0.html)
