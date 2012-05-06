@@ -32,7 +32,7 @@ namespace Git.Credential.WinStore
             string cmd;
             if (args.Length == 0)
             {
-                InstallTheApp();
+                InstallTheApp(silent: false);
                 return;
             }
                 
@@ -69,7 +69,7 @@ namespace Git.Credential.WinStore
             if (args.Length > 0 && args[0] == "-s")
             {
                 Console.Out.WriteLine("Silently Installing...");
-                InstallTheApp(true);
+                InstallTheApp(silent: true);
                 args = args.Skip(1).ToArray();
                 return true;
             }
