@@ -22,20 +22,33 @@ namespace Git.Credential.WinStore
             { "erase", EraseCommand }
         };
 
+        private static bool _isSilent;
+
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
-            if (TrySilentInstall(ref args)) { return; }
+
+            SetIfSilent(ref args);
+
+            if (IsAlreadyInstalled())
+            {
+                if (TrySilentUninstall(ref args)) { return; }
+            }
+            else
+            {
+                if (TrySilentInstall(ref args)) { return; }
+            }
+                        
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
             if (args.Length == 0)
             {
-                InstallTheApp(silent: false);
+                InstallTheApp();
                 return;
             }
-                
+
             cmd = args[0];
 
             IDictionary<string, string> parameters = ReadGitParameters();
@@ -58,11 +71,34 @@ namespace Git.Credential.WinStore
             WriteGitParameters(response);
         }
 
+        private static bool IsAlreadyInstalled()
+        {
+            return new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore")).Exists;
+        }
+
+        private static void SetIfSilent(ref string[] args)
+        {
+            if (IsArgumentPresent(ref args, "-s"))
+            {
+                args = args.Skip(1).ToArray();
+                _isSilent = true;
+            }
+            else
+            {
+                _isSilent = false;
+            }
+        }
+
+        private static bool IsArgumentPresent(ref string[] args, string dashArgumentValue)
+        {
+            return args.Length > 0 && args[0] == dashArgumentValue;
+        }
+
         // Conditional methods can return anything, so we use a ref arg... :S
         [Conditional("DEBUG")]
         private static void TryLaunchDebugger(ref string[] args)
         {
-            if (args.Length > 0 && args[0] == "-d")
+            if (IsArgumentPresent(ref args, "-d"))
             {
                 Console.Error.WriteLine("Launching debugger...");
                 Debugger.Launch();
@@ -72,10 +108,20 @@ namespace Git.Credential.WinStore
 
         private static bool TrySilentInstall(ref string[] args)
         {
-            if (args.Length > 0 && args[0] == "-s")
+            if (_isSilent)
             {
-                Console.Out.WriteLine("Silently Installing...");
-                InstallTheApp(silent: true);
+                InstallTheApp();
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool TrySilentUninstall(ref string[] args)
+        {
+            if (IsArgumentPresent(ref args, "-u"))
+            {
+                UninstallTheApp();
                 args = args.Skip(1).ToArray();
                 return true;
             }
@@ -110,15 +156,19 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
-        private static void InstallTheApp(bool silent)
+        private static void InstallTheApp()
         {
-            if(!silent)
+            if (!_isSilent)
             {
                 if (MessageBox.Show("Do you want to install git-credential-winstore to prompt for passwords?",
                     "Installing git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
                 {
                     return;
                 }
+            }
+            else
+            {
+                Console.Out.WriteLine("Silently Installing...");
             }
 
             var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
@@ -133,6 +183,31 @@ namespace Git.Credential.WinStore
             Process.Start("git", string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
         }
 
+        private static void UninstallTheApp()
+        {
+            var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
+
+            if (!_isSilent)
+            {
+                if (MessageBox.Show("Do you want to uninstall git-credential-winstore?",
+                    "Uninstalling git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                Console.Out.WriteLine("Silently Uninstalling...");
+            }
+
+            if (target.Exists)
+            {
+                target.Delete(true);
+            }
+
+            Process.Start("git", "config --global --remove-section credential");
+        }
+
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
         {
             // Build the URL
@@ -144,7 +219,7 @@ namespace Git.Credential.WinStore
 
             string userName = args.GetOrDefault("username", null);
             string password = null;
-            
+
             IntPtr credPtr = IntPtr.Zero;
             try
             {
@@ -161,7 +236,7 @@ namespace Git.Credential.WinStore
                     credPtr = IntPtr.Zero;
 
                     // If we have a username, pack an input authentication buffer
-                    Tuple<int, IntPtr> inputBuffer = null;;
+                    Tuple<int, IntPtr> inputBuffer = null; ;
                     IntPtr outputBuffer = IntPtr.Zero;
                     int outputBufferSize = 0;
                     try
@@ -227,7 +302,7 @@ namespace Git.Credential.WinStore
                     userName = cred.userName;
                     password = Marshal.PtrToStringBSTR(cred.credentialBlob);
                 }
-                    
+
                 yield return Tuple.Create("username", userName);
                 yield return Tuple.Create("password", password);
             }
@@ -285,7 +360,7 @@ namespace Git.Credential.WinStore
             }
             IntPtr buf = IntPtr.Zero;
             int size = 0;
-            
+
             // First, calculate size. (buf == IntPtr.Zero)
             var result = NativeMethods.CredPackAuthenticationBuffer(
                 dwFlags: 4, // CRED_PACK_GENERIC_CREDENTIALS
@@ -322,10 +397,12 @@ namespace Git.Credential.WinStore
             string password = args.GetOrDefault("password", String.Empty);
 
             bool abort = false;
-            if(abort |= String.IsNullOrEmpty(userName)) {
+            if (abort |= String.IsNullOrEmpty(userName))
+            {
                 Console.Error.WriteLine("username parameter must be provided");
             }
-            if(abort |= String.IsNullOrEmpty(password)) {
+            if (abort |= String.IsNullOrEmpty(password))
+            {
                 Console.Error.WriteLine("password parameter must be provided");
             }
             if (!abort)
@@ -347,7 +424,7 @@ namespace Git.Credential.WinStore
                     Console.Error.WriteLine(
                         "Failed to write credential: " +
                         GetLastErrorMessage());
-                }   
+                }
             }
             return Enumerable.Empty<Tuple<string, string>>();
         }
