@@ -22,6 +22,8 @@ namespace Git.Credential.WinStore
             { "erase", EraseCommand }
         };
 
+        static String GIT_EXECUTABLE_ENVIRONMENT_VARIABLE = "GIT_EXECUTABLE";
+
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
@@ -130,7 +132,28 @@ namespace Git.Credential.WinStore
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start("git", string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
+            var gitArguments = string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName);
+
+            try {
+                Process.Start("git", gitArguments);
+            } catch (System.ComponentModel.Win32Exception e) {
+                // Running git failed - try the environment variable (sometimes git will not be in the path - 
+                // e.g. when running git bash in recommended setting
+                var gitExecutablePath = System.Environment.GetEnvironmentVariable(GIT_EXECUTABLE_ENVIRONMENT_VARIABLE);
+                if (string.IsNullOrEmpty(gitExecutablePath)) {
+                    MessageBox.Show("Git is not in path and environment variable " + GIT_EXECUTABLE_ENVIRONMENT_VARIABLE +
+                        " is not set.", "No git executable found", MessageBoxButtons.OK);
+                } else {
+                    try {
+                        Process.Start(gitExecutablePath, gitArguments);
+                    } catch (Exception e1) {
+                        MessageBox.Show("Git is not in path and environment variable " + GIT_EXECUTABLE_ENVIRONMENT_VARIABLE +
+                            " doesn't point to a correct git executable.", "No git executable found", MessageBoxButtons.OK);
+                    }
+                }
+
+            }
+
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
