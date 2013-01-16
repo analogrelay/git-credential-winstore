@@ -3,7 +3,7 @@ This application is a small helper app designed to follow the git credentials AP
 
 ## Installation
 
-1. Download the git-credential-winstore.exe file from 
+1. Download the [git-credential-winstore.exe](http://blob.andrewnurse.net/gitcredentialwinstore/git-credential-winstore.exe) application
 2. Run it (make sure you have git in your PATH)
 
 ## FAQs
