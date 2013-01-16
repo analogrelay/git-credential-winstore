@@ -30,9 +30,14 @@ namespace Git.Credential.WinStore
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
-            if (args.Length == 0)
+            if (args.Length == 0 || args[0] == "-i")
             {
-                InstallTheApp(silent: false);
+                string path = null;
+                if (args.Length > 0 && args[0] == "-i" && args.Length > 1)
+                {
+                    path = args[1];
+                }
+                InstallTheApp(path, silent: false);
                 return;
             }
                 
@@ -74,8 +79,13 @@ namespace Git.Credential.WinStore
         {
             if (args.Length > 0 && args[0] == "-s")
             {
+                string path = null;
+                if (args.Length > 1)
+                {
+                    path = args[1];
+                }
                 Console.Out.WriteLine("Silently Installing...");
-                InstallTheApp(silent: true);
+                InstallTheApp(path, silent: true);
                 args = args.Skip(1).ToArray();
                 return true;
             }
@@ -110,7 +120,7 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
-        private static void InstallTheApp(bool silent)
+        private static void InstallTheApp(string pathToGit, bool silent)
         {
             if(!silent)
             {
@@ -119,6 +129,23 @@ namespace Git.Credential.WinStore
                 {
                     return;
                 }
+            }
+
+            // Look for git
+            if (String.IsNullOrEmpty(pathToGit))
+            {
+                string[] paths = Environment.GetEnvironmentVariable("PATH").Split(Path.DirectorySeparatorChar);
+                bool foundGit = paths.Select(path => File.Exists(Path.Combine(path, "git.exe"))).Any(b => b);
+                if (!foundGit)
+                {
+                    Console.WriteLine(@"Could not find Git in your PATH environment variable.");
+                    Console.WriteLine(@"You can specify the exact path to git by running: ");
+                    Console.WriteLine(@" git-credential-winstore -i C:\Path\To\Git.exe");
+                    Console.WriteLine(@"Press ENTER to exit.");
+                    Console.ReadLine();
+                    return;
+                }
+                pathToGit = "git"; // Still use PATH resolution to run the command
             }
 
             var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
@@ -130,7 +157,7 @@ namespace Git.Credential.WinStore
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start("git", string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
+            Process.Start(pathToGit, string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
