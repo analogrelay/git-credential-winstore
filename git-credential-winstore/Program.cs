@@ -58,7 +58,7 @@ namespace Git.Credential.WinStore
             WriteGitParameters(response);
         }
 
-        // Conditional methods can return anything, so we use a ref arg... :S
+        // Conditional methods can't return anything, so we use a ref arg... :S
         [Conditional("DEBUG")]
         private static void TryLaunchDebugger(ref string[] args)
         {
