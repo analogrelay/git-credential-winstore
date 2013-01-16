@@ -134,9 +134,10 @@ namespace Git.Credential.WinStore
             // Look for git
             if (String.IsNullOrEmpty(pathToGit))
             {
-                string[] paths = Environment.GetEnvironmentVariable("PATH").Split(Path.DirectorySeparatorChar);
-                bool foundGit = paths.Select(path => File.Exists(Path.Combine(path, "git.exe"))).Any(b => b);
-                if (!foundGit)
+                string[] paths = Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator);
+                pathToGit = paths.Select(path => Path.Combine(path, "git.exe"))
+                                 .Where(File.Exists).FirstOrDefault();
+                if (String.IsNullOrEmpty(pathToGit))
                 {
                     Console.WriteLine(@"Could not find Git in your PATH environment variable.");
                     Console.WriteLine(@"You can specify the exact path to git by running: ");
@@ -145,7 +146,6 @@ namespace Git.Credential.WinStore
                     Console.ReadLine();
                     return;
                 }
-                pathToGit = "git"; // Still use PATH resolution to run the command
             }
 
             var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
@@ -155,6 +155,10 @@ namespace Git.Credential.WinStore
             }
 
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
+            if (dest.Exists)
+            {
+                dest.Delete();
+            }
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
             Process.Start(pathToGit, string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
