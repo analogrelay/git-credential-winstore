@@ -1,8 +1,9 @@
 # Windows Credential Store for Git
 This application is a small helper app designed to follow the git credentials API as defined by the [Git Documentation](https://github.com/gitster/git-htmldocs/blob/master/technical/api-credentials.txt).
+
 ## Installation
 
-1. Download the git-credential-winstore.exe file from the downloads section
+1. Download the git-credential-winstore.exe file from 
 2. Run it (make sure you have git in your PATH)
 
 ## FAQs
@@ -20,7 +21,7 @@ This app just uses the existing Windows Credential Store to hold your credential
 That's not a question.
 
 ### But I actually have another question...
-Ok, you can email me at [andrew@andrewnurse.net](mailto:andrew@andrewnurse.net).
+Ok, you can email me at [andrew@andrewnurse.net](mailto:andrew@andrewnurse.net). Or post an issue in the Issues section.
 
 ## Special Thanks
 * [Paul Betts](http://paulbetts.org/) for creating our handy-dandy installer.
