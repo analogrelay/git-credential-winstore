@@ -153,7 +153,7 @@ namespace Git.Credential.WinStore
             {
                 target.Create();
             }
-
+            
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
             if (dest.Exists)
             {
@@ -161,7 +161,12 @@ namespace Git.Credential.WinStore
             }
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start(pathToGit, string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
+            // Git config command auto-escapes the escape char, so we end up with \\ in .gitconfig where we see \\ in the code below..
+            // First, switch to "/" instead of "\\" for path separator, then escape spaces and single-quotes...
+            var gitEscapedExePath = dest.FullName.Replace("\\", "/").Replace(" ", "\\ ").Replace("'", "\\'");
+            var gitCommand = string.Format("config --global credential.helper \"{0}\"", gitEscapedExePath);
+
+            Process.Start(pathToGit, gitCommand);
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
