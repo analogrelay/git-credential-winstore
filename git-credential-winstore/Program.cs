@@ -419,7 +419,8 @@ namespace Git.Credential.WinStore
 
         private static string GetTargetName(Uri url)
         {
-            return "git:" + GetHost(url);
+            // not scoping url host to encourage sharing of credentials and minimal maintenance with other windows git clients
+            return GetHost(url);
         }
 
         private static string GetHost(Uri url)
