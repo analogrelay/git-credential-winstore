@@ -107,8 +107,14 @@ namespace Git.Credential.WinStore
             Dictionary<string, string> values = new Dictionary<string, string>();
             while (!String.IsNullOrWhiteSpace((line = Console.ReadLine())))
             {
-                string[] splitted = line.Split('=');
-                values[splitted[0]] = splitted[1];
+                // Find the first '='
+                int equalsIndex = line.IndexOf('=');
+                if (equalsIndex > -1)
+                {
+                    string key = line.Substring(0, equalsIndex);
+                    string value = line.Substring(equalsIndex + 1);
+                    values[key] = value;
+                }
             }
             return values;
         }
