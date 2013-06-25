@@ -15,6 +15,9 @@ Thumbs.db
 # Solution User Options
 *.suo
 
+# nuget.exe is downloaded if necessary
+nuget.exe
+
 # Project User Options
 *.user
 
