@@ -25,22 +25,28 @@ namespace Git.Credential.WinStore
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
-            if (TrySilentInstall(ref args)) { return; }
+
+            IDictionary<string, object> installParameters = ReadInstallParameters(ref args);
+            bool hasInstallParameter = args.Any(arg => arg == "-i" || arg == "-s");
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
-            if (args.Length == 0 || args[0] == "-i")
+
+            if (args.Length == 0 || hasInstallParameter)
             {
-                string path = null;
-                if (args.Length > 0 && args[0] == "-i" && args.Length > 1)
+                string gitPath = installParameters["gitPath"] as string;
+                bool silent = (bool) installParameters["silent"];
+
+                if (silent)
                 {
-                    path = args[1];
+                    Console.Out.WriteLine("Silently Installing...");
                 }
-                InstallTheApp(path, silent: false);
+
+                InstallTheApp(gitPath, silent: silent);
                 return;
             }
-                
+
             cmd = args[0];
 
             IDictionary<string, string> parameters = ReadGitParameters();
@@ -75,24 +81,6 @@ namespace Git.Credential.WinStore
             }
         }
 
-        private static bool TrySilentInstall(ref string[] args)
-        {
-            if (args.Length > 0 && args[0] == "-s")
-            {
-                string path = null;
-                if (args.Length > 1)
-                {
-                    path = args[1];
-                }
-                Console.Out.WriteLine("Silently Installing...");
-                InstallTheApp(path, silent: true);
-                args = args.Skip(1).ToArray();
-                return true;
-            }
-
-            return false;
-        }
-
         private static void WriteGitParameters(IDictionary<string, string> response)
         {
             foreach (var pair in response)
@@ -116,6 +104,43 @@ namespace Git.Credential.WinStore
                     values[key] = value;
                 }
             }
+            return values;
+        }
+        private static IDictionary<string, object> ReadInstallParameters(ref string[] args)
+        {
+            Dictionary<string, object> values = new Dictionary<string, object>();
+            int length = args.Length;
+
+            string gitPath = String.Empty;
+            bool silentMode = false;
+
+            if (length > 0)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    switch (args[i])
+                    {
+                        case "-s":
+                            silentMode = true;
+                            break;
+                        case "-i":
+                            try
+                            {
+                                gitPath = args[++i];
+                            }
+                            catch (Exception)
+                            {
+                                gitPath = String.Empty;
+                            }
+                            break;
+                    }
+                }
+
+            }
+
+            values["gitPath"] = gitPath;
+            values["silent"] = silentMode;
+
             return values;
         }
 
