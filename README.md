@@ -16,6 +16,10 @@ Make sure you're running the latest version of msysgit. The credential API is fa
 ### Why doesn't it install?
 Make sure you're running with GIT on your PATH (perhaps by running from the GIT bash shell), or you've used the "-i" option to specify the location of Git
 
+### Where does it install?
+
+By default, the application is installed in the folder "%AppData%\GitCredStore". But you can change it using the "-t C:\Path\To\Install\dir" option.
+
 ### Eeeeeeeeek! Why is there a message box when I install it! MAKE IT STOP! MAKE IT STOP! Please?
 Thanks to [Matt Wrock](https://github.com/mwrock), we have a silent install option. Pass "-s" (and optionally follow that with the path to Git if it isn't in your PATH) and the helper will be installed without prompts!
 

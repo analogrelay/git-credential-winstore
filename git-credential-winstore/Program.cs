@@ -27,7 +27,7 @@ namespace Git.Credential.WinStore
             TryLaunchDebugger(ref args);
 
             IDictionary<string, object> installParameters = ReadInstallParameters(ref args);
-            bool hasInstallParameter = args.Any(arg => arg == "-i" || arg == "-s");
+            bool hasInstallParameter = args.Any(arg => arg == "-i" || arg == "-s" || arg == "-t");
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
@@ -35,7 +35,8 @@ namespace Git.Credential.WinStore
 
             if (args.Length == 0 || hasInstallParameter)
             {
-                string gitPath = installParameters["gitPath"] as string;
+                string gitPath = installParameters["gitPath"] as string,
+                       installPath = installParameters["installPath"] as string;
                 bool silent = (bool) installParameters["silent"];
 
                 if (silent)
@@ -43,7 +44,7 @@ namespace Git.Credential.WinStore
                     Console.Out.WriteLine("Silently Installing...");
                 }
 
-                InstallTheApp(gitPath, silent: silent);
+                InstallTheApp(gitPath, silent: silent, installPath: installPath);
                 return;
             }
 
@@ -111,7 +112,8 @@ namespace Git.Credential.WinStore
             Dictionary<string, object> values = new Dictionary<string, object>();
             int length = args.Length;
 
-            string gitPath = String.Empty;
+            string gitPath = String.Empty,
+                   installPath = String.Empty;
             bool silentMode = false;
 
             if (length > 0)
@@ -133,6 +135,16 @@ namespace Git.Credential.WinStore
                                 gitPath = String.Empty;
                             }
                             break;
+                        case "-t":
+                            try
+                            {
+                                installPath = args[++i];
+                            }
+                            catch (Exception)
+                            {
+                                installPath = String.Empty;
+                            }
+                            break;
                     }
                 }
 
@@ -140,6 +152,7 @@ namespace Git.Credential.WinStore
 
             values["gitPath"] = gitPath;
             values["silent"] = silentMode;
+            values["installPath"] = installPath;
 
             return values;
         }
@@ -151,7 +164,7 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
         }
 
-        private static void InstallTheApp(string pathToGit, bool silent)
+        private static void InstallTheApp(string pathToGit, bool silent, string installPath)
         {
             if(!silent)
             {
@@ -179,13 +192,31 @@ namespace Git.Credential.WinStore
                 }
             }
 
-            var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
+            if (String.IsNullOrEmpty(installPath))
+            {
+                installPath = @"%AppData%\GitCredStore";
+            }
+
+            DirectoryInfo target;
+            try
+            {
+                target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(installPath));
+            }
+            catch (Exception)
+            {
+                Console.WriteLine(@"It looks like the value ""{0}"" is not a valid path.", installPath);
+                Console.WriteLine(@"Please check the -t argument and try again.");
+                Console.WriteLine(@"Press ENTER to exit.");
+                Console.ReadLine();
+                return;
+            }
+
             if (!target.Exists)
             {
                 target.Create();
             }
 
-            var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
+            var dest = new FileInfo(Environment.ExpandEnvironmentVariables(String.Concat(installPath, @"\git-credential-winstore.exe")));
             if (dest.Exists)
             {
                 dest.Delete();
