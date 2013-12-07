@@ -26,7 +26,7 @@ namespace Git.Credential.WinStore
         {
             TryLaunchDebugger(ref args);
 
-            IDictionary<string, object> installParameters = ReadInstallParameters(ref args);
+            Arguments arguments = ParseCommandLineArguments(ref args);
             bool hasInstallParameter = args.Any(arg => arg == "-i" || arg == "-s" || arg == "-t");
 
             // Parse command
@@ -35,16 +35,13 @@ namespace Git.Credential.WinStore
 
             if (args.Length == 0 || hasInstallParameter)
             {
-                string gitPath = installParameters["gitPath"] as string,
-                       installPath = installParameters["installPath"] as string;
-                bool silent = (bool) installParameters["silent"];
 
-                if (silent)
+                if (arguments.SilentMode)
                 {
                     Console.Out.WriteLine("Silently Installing...");
                 }
 
-                InstallTheApp(gitPath, silent: silent, installPath: installPath);
+                InstallTheApp(arguments.GitPath, silent: arguments.SilentMode, installPath: arguments.InstallPath);
                 return;
             }
 
@@ -107,42 +104,37 @@ namespace Git.Credential.WinStore
             }
             return values;
         }
-        private static IDictionary<string, object> ReadInstallParameters(ref string[] args)
-        {
-            Dictionary<string, object> values = new Dictionary<string, object>();
-            int length = args.Length;
 
-            string gitPath = String.Empty,
-                   installPath = String.Empty;
-            bool silentMode = false;
+        private static Arguments ParseCommandLineArguments(ref string[] cliArgs)
+        {
+            Arguments arguments = new Arguments();
+            int length = cliArgs.Length;
 
             if (length > 0)
             {
                 for (int i = 0; i < length; i++)
                 {
-                    switch (args[i])
+                    switch (cliArgs[i])
                     {
                         case "-s":
-                            silentMode = true;
+                            arguments.SilentMode = true;
                             break;
                         case "-i":
                             try
                             {
-                                gitPath = args[++i];
+                                arguments.GitPath = cliArgs[++i];
                             }
                             catch (Exception)
                             {
-                                gitPath = String.Empty;
                             }
                             break;
                         case "-t":
                             try
                             {
-                                installPath = args[++i];
+                                arguments.InstallPath = cliArgs[++i];
                             }
                             catch (Exception)
                             {
-                                installPath = String.Empty;
                             }
                             break;
                     }
@@ -150,11 +142,7 @@ namespace Git.Credential.WinStore
 
             }
 
-            values["gitPath"] = gitPath;
-            values["silent"] = silentMode;
-            values["installPath"] = installPath;
-
-            return values;
+            return arguments;
         }
 
         private static void WriteUsage()
