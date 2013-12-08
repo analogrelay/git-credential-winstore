@@ -25,15 +25,33 @@ namespace Git.Credential.WinStore
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
+<<<<<<< master
             if (TrySilentInstall(ref args)) { return; }
+=======
+
+            var arguments = Arguments.Parse(ref args);
+
+            if (arguments.Help)
+            {
+                WriteUsage();
+                return;
+            }
+>>>>>>> local
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
+<<<<<<< master
             if (args.Length == 0 || args[0] == "-i")
             {
                 string path = null;
                 if (args.Length > 0 && args[0] == "-i" && args.Length > 1)
+=======
+
+            if (args.Length == 0 || arguments.HasInstallParameter)
+            {
+                if (arguments.SilentMode)
+>>>>>>> local
                 {
                     path = args[1];
                 }
@@ -121,9 +139,19 @@ namespace Git.Credential.WinStore
 
         private static void WriteUsage()
         {
-            Console.Error.WriteLine("If you see this. git-credential-winstore is correctly installed!");
-            Console.Error.WriteLine("This application is designed to be used by git as a credential helper and should not be invoked separately");
-            Console.Error.WriteLine("See the following link for more info: http://www.manpagez.com/man/1/git-credential-cache/");
+            Console.Error.WriteLine("Git Credential Storage tool for Windows");
+            Console.Error.WriteLine(" Brought to you by the Git Credential WinStore contributors");
+            Console.Error.WriteLine(" https://gitcredentialstore.codeplex.com/");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Usage: ");
+            Console.Error.WriteLine("  git-credential-winstore.exe [-s] [-i <path>] [-t <path>]");
+            Console.Error.WriteLine("  git-credential-winstore.exe -h");
+            Console.Error.WriteLine();
+            Console.Error.WriteLine("Options:");
+            Console.Error.WriteLine("  -s          Install silently (with no prompts or dialogs)");
+            Console.Error.WriteLine("  -i <path>   Specifies the path to 'git.exe'");
+            Console.Error.WriteLine("  -t <path>   Specifies the path in which to install this helper");
+            Console.Error.WriteLine("  -h or -?    Display this help message");
         }
 
         private static void InstallTheApp(string pathToGit, bool silent)
@@ -143,15 +171,15 @@ namespace Git.Credential.WinStore
                 string[] paths = Environment.GetEnvironmentVariable("PATH").Split(Path.PathSeparator);
                 pathToGit = paths.Select(path => Path.Combine(path, "git.exe"))
                                  .Where(File.Exists).FirstOrDefault();
-                if (String.IsNullOrEmpty(pathToGit))
-                {
-                    Console.WriteLine(@"Could not find Git in your PATH environment variable.");
-                    Console.WriteLine(@"You can specify the exact path to git by running: ");
-                    Console.WriteLine(@" git-credential-winstore -i C:\Path\To\Git.exe");
-                    Console.WriteLine(@"Press ENTER to exit.");
-                    Console.ReadLine();
-                    return;
-                }
+            }
+
+            if (String.IsNullOrEmpty(pathToGit) || !File.Exists(pathToGit))
+            {
+                Console.Error.WriteLine(@"Could not find Git!");
+                Console.Error.WriteLine(@"Ensure that 'git.exe' is in a path listed in your PATH environment variable. Or specify the exact path to git using the '-i' parameter:");
+                Console.Error.WriteLine(@"You can  ");
+                Console.Error.WriteLine(@" git-credential-winstore -i C:\Path\To\Git.exe");
+                return;
             }
 
             var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));

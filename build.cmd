@@ -1,0 +1,1 @@
+@powershell -NoProfile -NoLogo -File "%~dp0build\build.ps1" %*
