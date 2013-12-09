@@ -42,12 +42,13 @@ namespace Git.Credential.WinStore
             {
                 if (arguments.SilentMode)
                 {
-                    path = args[1];
+                    Console.Out.WriteLine("Silently Installing...");
                 }
-                InstallTheApp(path, silent: false);
+
+                InstallTheApp(arguments.GitPath, silent: arguments.SilentMode, installPath: arguments.InstallPath);
                 return;
             }
-                
+
             cmd = args[0];
 
             IDictionary<string, string> parameters = ReadGitParameters();
@@ -80,24 +81,6 @@ namespace Git.Credential.WinStore
                 Debugger.Launch();
                 args = args.Skip(1).ToArray();
             }
-        }
-
-        private static bool TrySilentInstall(ref string[] args)
-        {
-            if (args.Length > 0 && args[0] == "-s")
-            {
-                string path = null;
-                if (args.Length > 1)
-                {
-                    path = args[1];
-                }
-                Console.Out.WriteLine("Silently Installing...");
-                InstallTheApp(path, silent: true);
-                args = args.Skip(1).ToArray();
-                return true;
-            }
-
-            return false;
         }
 
         private static void WriteGitParameters(IDictionary<string, string> response)
@@ -143,7 +126,7 @@ namespace Git.Credential.WinStore
             Console.Error.WriteLine("  -h or -?    Display this help message");
         }
 
-        private static void InstallTheApp(string pathToGit, bool silent)
+        private static void InstallTheApp(string pathToGit, bool silent, string installPath)
         {
             if(!silent)
             {
@@ -166,18 +149,33 @@ namespace Git.Credential.WinStore
             {
                 Console.Error.WriteLine(@"Could not find Git!");
                 Console.Error.WriteLine(@"Ensure that 'git.exe' is in a path listed in your PATH environment variable. Or specify the exact path to git using the '-i' parameter:");
-                Console.Error.WriteLine(@"You can  ");
                 Console.Error.WriteLine(@" git-credential-winstore -i C:\Path\To\Git.exe");
                 return;
             }
 
-            var target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore"));
+            if (String.IsNullOrEmpty(installPath))
+            {
+                installPath = @"%AppData%\GitCredStore";
+            }
+
+            DirectoryInfo target;
+            try
+            {
+                target = new DirectoryInfo(Environment.ExpandEnvironmentVariables(installPath));
+            }
+            catch (Exception)
+            {
+                Console.Error.WriteLine(@"It looks like the value ""{0}"" is not a valid path.", installPath);
+                Console.Error.WriteLine(@"Please check the -t argument and try again.");
+                return;
+            }
+
             if (!target.Exists)
             {
                 target.Create();
             }
 
-            var dest = new FileInfo(Environment.ExpandEnvironmentVariables(@"%AppData%\GitCredStore\git-credential-winstore.exe"));
+            var dest = new FileInfo(Environment.ExpandEnvironmentVariables(String.Concat(installPath, @"\git-credential-winstore.exe")));
             if (dest.Exists)
             {
                 dest.Delete();
