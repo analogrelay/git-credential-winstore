@@ -25,9 +25,6 @@ namespace Git.Credential.WinStore
         static void Main(string[] args)
         {
             TryLaunchDebugger(ref args);
-<<<<<<< master
-            if (TrySilentInstall(ref args)) { return; }
-=======
 
             var arguments = Arguments.Parse(ref args);
 
@@ -36,22 +33,14 @@ namespace Git.Credential.WinStore
                 WriteUsage();
                 return;
             }
->>>>>>> local
 
             // Parse command
             Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
             string cmd;
-<<<<<<< master
-            if (args.Length == 0 || args[0] == "-i")
-            {
-                string path = null;
-                if (args.Length > 0 && args[0] == "-i" && args.Length > 1)
-=======
 
             if (args.Length == 0 || arguments.HasInstallParameter)
             {
                 if (arguments.SilentMode)
->>>>>>> local
                 {
                     path = args[1];
                 }

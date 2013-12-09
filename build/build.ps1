@@ -52,3 +52,12 @@ if(!$platform) {
 }
 
 msbuild $sln @args
+
+if($config -and $config.EndsWith("Release"))
+{
+    if(!(Test-Path "$reporoot\bin")) {
+        mkdir "$reporoot\bin" | Out-Null
+    }
+
+    cp "$reporoot\git-credential-winstore\bin\Release" "bin"
+}
