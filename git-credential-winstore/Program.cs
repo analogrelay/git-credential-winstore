@@ -277,7 +277,7 @@ namespace Git.Credential.WinStore
                     // Decode the credential
                     NativeMethods.CREDENTIAL cred = (NativeMethods.CREDENTIAL)Marshal.PtrToStructure(credPtr, typeof(NativeMethods.CREDENTIAL));
                     userName = cred.userName;
-                    password = Marshal.PtrToStringBSTR(cred.credentialBlob);
+                    password = Marshal.PtrToStringUni(cred.credentialBlob, cred.credentialBlobSize / 2); // blob size is in bytes but PtrToStringUni wants count of Unicode characters.
                 }
                     
                 yield return Tuple.Create("username", userName);
@@ -383,17 +383,16 @@ namespace Git.Credential.WinStore
             if (!abort)
             {
                 string target = GetTargetName(url);
-                IntPtr passwordPtr = Marshal.StringToBSTR(password);
                 NativeMethods.CREDENTIAL cred = new NativeMethods.CREDENTIAL()
                 {
                     type = 0x01, // Generic
                     targetName = target,
                     credentialBlob = Marshal.StringToCoTaskMemUni(password),
+                    credentialBlobSize = Encoding.Unicode.GetByteCount(password),
                     persist = 0x03, // Enterprise (roaming)
                     attributeCount = 0,
                     userName = userName
                 };
-                cred.credentialBlobSize = Encoding.Unicode.GetByteCount(password);
                 if (!NativeMethods.CredWrite(ref cred, 0))
                 {
                     Console.Error.WriteLine(
