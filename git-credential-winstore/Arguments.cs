@@ -4,17 +4,20 @@ namespace Git.Credential.WinStore
 {
     class Arguments
     {
-
         public string GitPath { get; set; }
+
         public bool SilentMode { get; set; }
+
         public string InstallPath { get; set; }
+
         public bool Help { get; set; }
 
         public bool HasInstallParameter { get { return !String.IsNullOrEmpty(GitPath) || !String.IsNullOrEmpty(InstallPath) || SilentMode; } }
 
-        public static Arguments Parse(ref string[] args) {
-            Arguments arguments = new Arguments();
-            int length = args.Length;
+        public static Arguments Parse(ref string[] args)
+        {
+            var arguments = new Arguments();
+            var length = args.Length;
 
             if (length > 0)
             {
@@ -26,9 +29,11 @@ namespace Git.Credential.WinStore
                         case "-?":
                             arguments.Help = true;
                             break;
+
                         case "-s":
                             arguments.SilentMode = true;
                             break;
+
                         case "-i":
                             if (args.Length > i + 1)
                             {
@@ -39,6 +44,7 @@ namespace Git.Credential.WinStore
                                 throw new Exception("Expected a value after '-i' switch");
                             }
                             break;
+
                         case "-t":
                             if (args.Length > i + 1)
                             {
@@ -52,6 +58,7 @@ namespace Git.Credential.WinStore
                     }
                 }
             }
+
             return arguments;
         }
     }

@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
-using System.ComponentModel;
-using System.Diagnostics;
-using System.Threading;
+using System.Text;
 using System.Windows.Forms;
 
 namespace Git.Credential.WinStore
@@ -34,10 +32,6 @@ namespace Git.Credential.WinStore
                 return;
             }
 
-            // Parse command
-            Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
-            string cmd;
-
             if (args.Length == 0 || arguments.HasInstallParameter)
             {
                 if (arguments.SilentMode)
@@ -49,9 +43,10 @@ namespace Git.Credential.WinStore
                 return;
             }
 
-            cmd = args[0];
+            // Parse command.
+            var cmd = args[0];
 
-            IDictionary<string, string> parameters = ReadGitParameters();
+            var parameters = ReadGitParameters();
 
             if (cmd == "debug")
             {
@@ -59,11 +54,14 @@ namespace Git.Credential.WinStore
                 parameters.Remove("cmd");
             }
 
+            Func<IDictionary<string, string>, IEnumerable<Tuple<string, string>>> command = null;
+
             if (!_commands.TryGetValue(cmd, out command))
             {
                 WriteUsage();
                 return;
             }
+
             IDictionary<string, string> response = command(parameters).ToDictionary(
                 t => t.Item1,
                 t => t.Item2);
@@ -93,19 +91,19 @@ namespace Git.Credential.WinStore
 
         private static IDictionary<string, string> ReadGitParameters()
         {
+            var values = new Dictionary<string, string>();
+
             string line;
-            Dictionary<string, string> values = new Dictionary<string, string>();
             while (!String.IsNullOrWhiteSpace((line = Console.ReadLine())))
             {
-                // Find the first '='
-                int equalsIndex = line.IndexOf('=');
-                if (equalsIndex > -1)
+                var pair = line.Split(new[] { '=' }, 2);
+
+                if (pair.Length == 2)
                 {
-                    string key = line.Substring(0, equalsIndex);
-                    string value = line.Substring(equalsIndex + 1);
-                    values[key] = value;
+                    values[pair[0]] = pair[1];
                 }
             }
+
             return values;
         }
 
@@ -128,7 +126,7 @@ namespace Git.Credential.WinStore
 
         private static void InstallTheApp(string pathToGit, bool silent, string installPath)
         {
-            if(!silent)
+            if (!silent)
             {
                 if (MessageBox.Show("Do you want to install git-credential-winstore to prompt for passwords?",
                     "Installing git-credential-winstore", MessageBoxButtons.YesNo) != DialogResult.Yes)
@@ -180,15 +178,16 @@ namespace Git.Credential.WinStore
             {
                 dest.Delete();
             }
+
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
-            Process.Start(pathToGit, string.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
+            Process.Start(pathToGit, String.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
         }
 
         static IEnumerable<Tuple<string, string>> GetCommand(IDictionary<string, string> args)
         {
             // Build the URL
-            Uri url = ExtractUrl(args);
+            var url = ExtractUrl(args);
             if (url == null)
             {
                 yield break;
@@ -196,12 +195,14 @@ namespace Git.Credential.WinStore
 
             string userName = args.GetOrDefault("username", null);
             string password = null;
-            
-            IntPtr credPtr = IntPtr.Zero;
+
+            var credPtr = IntPtr.Zero;
+
             try
             {
                 // Check for a credential
-                string target = GetTargetName(url);
+                var target = GetTargetName(url);
+
                 if (!NativeMethods.CredRead(target, NativeMethods.CRED_TYPE.GENERIC, 0, out credPtr))
                 {
                     // Don't have a credential for this user. Are we on XP? If so, sorry no dice.
@@ -210,16 +211,20 @@ namespace Git.Credential.WinStore
                         // Users will get a Git prompt for user name and password. We'll still store them.
                         yield break;
                     }
+
                     credPtr = IntPtr.Zero;
 
                     // If we have a username, pack an input authentication buffer
-                    Tuple<int, IntPtr> inputBuffer = null;;
+                    Tuple<int, IntPtr> inputBuffer = null; ;
                     IntPtr outputBuffer = IntPtr.Zero;
                     int outputBufferSize = 0;
                     try
                     {
                         inputBuffer = PackUserNameBuffer(userName);
-                        if (inputBuffer == null) { yield break; }
+                        if (inputBuffer == null)
+                        {
+                            yield break;
+                        }
 
                         // Setup UI
                         NativeMethods.CREDUI_INFO ui = new NativeMethods.CREDUI_INFO()
@@ -279,7 +284,7 @@ namespace Git.Credential.WinStore
                     userName = cred.userName;
                     password = Marshal.PtrToStringUni(cred.credentialBlob, cred.credentialBlobSize / 2); // blob size is in bytes but PtrToStringUni wants count of Unicode characters.
                 }
-                    
+
                 yield return Tuple.Create("username", userName);
                 yield return Tuple.Create("password", password);
             }
@@ -335,9 +340,10 @@ namespace Git.Credential.WinStore
             {
                 return Tuple.Create(0, IntPtr.Zero);
             }
-            IntPtr buf = IntPtr.Zero;
-            int size = 0;
-            
+
+            var buf = IntPtr.Zero;
+            var size = 0;
+
             // First, calculate size. (buf == IntPtr.Zero)
             var result = NativeMethods.CredPackAuthenticationBuffer(
                 dwFlags: 4, // CRED_PACK_GENERIC_CREDENTIALS
@@ -345,10 +351,12 @@ namespace Git.Credential.WinStore
                 pszPassword: String.Empty,
                 pPackedCredentials: buf,
                 pcbPackedCredentials: ref size);
+
             Debug.Assert(!result);
+
             if (Marshal.GetLastWin32Error() != 122)
             {
-                Console.Error.WriteLine("Unable to calculate size of packed authentication buffer: " + GetLastErrorMessage());
+                Console.Error.WriteLine("Unable to calculate size of packed authentication buffer: {0}", GetLastErrorMessage());
                 return null;
             }
 
@@ -360,30 +368,36 @@ namespace Git.Credential.WinStore
                 pPackedCredentials: buf,
                 pcbPackedCredentials: ref size))
             {
-                Console.Error.WriteLine("Unable to pack incoming username: " + GetLastErrorMessage());
+                Console.Error.WriteLine("Unable to pack incoming username: {0}", GetLastErrorMessage());
                 return null;
             }
+
             return Tuple.Create(size, buf);
         }
 
         static IEnumerable<Tuple<string, string>> StoreCommand(IDictionary<string, string> args)
         {
             // Build the URL
-            Uri url = ExtractUrl(args);
-            string userName = args.GetOrDefault("username", String.Empty);
-            string password = args.GetOrDefault("password", String.Empty);
+            var url = ExtractUrl(args);
+            var userName = args.GetOrDefault("username", String.Empty);
+            var password = args.GetOrDefault("password", String.Empty);
 
-            bool abort = false;
-            if(abort |= String.IsNullOrEmpty(userName)) {
+            var abort = false;
+            if (abort |= String.IsNullOrEmpty(userName))
+            {
                 Console.Error.WriteLine("username parameter must be provided");
             }
-            if(abort |= String.IsNullOrEmpty(password)) {
+
+            if (abort |= String.IsNullOrEmpty(password))
+            {
                 Console.Error.WriteLine("password parameter must be provided");
             }
+
             if (!abort)
             {
-                string target = GetTargetName(url);
-                NativeMethods.CREDENTIAL cred = new NativeMethods.CREDENTIAL()
+                var target = GetTargetName(url);
+
+                var cred = new NativeMethods.CREDENTIAL()
                 {
                     type = 0x01, // Generic
                     targetName = target,
@@ -393,25 +407,25 @@ namespace Git.Credential.WinStore
                     attributeCount = 0,
                     userName = userName
                 };
+
                 if (!NativeMethods.CredWrite(ref cred, 0))
                 {
-                    Console.Error.WriteLine(
-                        "Failed to write credential: " +
-                        GetLastErrorMessage());
-                }   
+                    Console.Error.WriteLine("Failed to write credential: {0}", GetLastErrorMessage());
+                }
             }
+
             return Enumerable.Empty<Tuple<string, string>>();
         }
 
         static IEnumerable<Tuple<string, string>> EraseCommand(IDictionary<string, string> args)
         {
-            Uri url = ExtractUrl(args);
+            var url = ExtractUrl(args);
+
             if (!NativeMethods.CredDelete(GetTargetName(url), NativeMethods.CRED_TYPE.GENERIC, 0))
             {
-                Console.Error.WriteLine(
-                    "Failed to erase credential: " +
-                    GetLastErrorMessage());
+                Console.Error.WriteLine("Failed to erase credential: {0}", GetLastErrorMessage());
             }
+
             yield break;
         }
 
@@ -423,17 +437,18 @@ namespace Git.Credential.WinStore
         private static Uri ExtractUrl(IDictionary<string, string> args)
         {
             // Manually build a string (tried a UriBuilder, but Git gives us credentials and port numbers so it's difficult)
-            string scheme = args.GetOrDefault("protocol", "https");
-            string host = args.GetOrDefault("host", "no-host.git");
-            string path = args.GetOrDefault("path", "/");
+            var scheme = args.GetOrDefault("protocol", "https");
+            var host = args.GetOrDefault("host", "no-host.git");
+            var path = args.GetOrDefault("path", String.Empty);
 
-            string candidateUrl = String.Format("{0}://{1}{2}", scheme, host, path);
-            Uri url;
+            var candidateUrl = String.Format("{0}://{1}/{2}", scheme, host, path);
+
+            Uri url = null;
             if (!Uri.TryCreate(candidateUrl, UriKind.Absolute, out url))
             {
                 Console.Error.WriteLine("Failed to parse url: {0}", candidateUrl);
-                return null;
             }
+
             return url;
         }
 

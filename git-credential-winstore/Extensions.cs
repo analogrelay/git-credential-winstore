@@ -16,14 +16,5 @@ namespace Git.Credential.WinStore
             }
             return ret;
         }
-
-        public static string TruncateTo(this string self, int maxlength)
-        {
-            if (self.Length > maxlength)
-            {
-                return self.Substring(0, maxlength);
-            }
-            return self;
-        }
     }
 }
