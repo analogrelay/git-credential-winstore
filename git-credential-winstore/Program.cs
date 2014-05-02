@@ -79,7 +79,7 @@ namespace Git.Credential.WinStore
                 WriteUsage();
                 return;
             }
-            Trace.TraceInformation("Executing command: '{0}'", command);
+            Trace.TraceInformation("Executing command: '{0}'", cmd);
 
             IDictionary<string, string> response = command(parameters).ToDictionary(
                 t => t.Item1,
@@ -105,7 +105,15 @@ namespace Git.Credential.WinStore
         {
             foreach (var pair in response)
             {
-                Trace.TraceInformation("To Git: {0} = {1}", pair.Key, pair.Value);
+                if (Trace.Listeners.Count > 0)
+                {
+                    string traceValue = pair.Value;
+                    if (String.Equals(pair.Key, "password", StringComparison.OrdinalIgnoreCase))
+                    {
+                        traceValue = "****";
+                    }
+                    Trace.TraceInformation("To Git: {0} = {1}", pair.Key, traceValue);
+                }
                 Console.Write("{0}={1}\n", pair.Key, pair.Value);
             }
         }
