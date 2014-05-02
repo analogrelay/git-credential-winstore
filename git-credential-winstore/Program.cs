@@ -24,6 +24,23 @@ namespace Git.Credential.WinStore
         {
             TryLaunchDebugger(ref args);
 
+            // Check debugging environment variables
+            string flags = Environment.GetEnvironmentVariable("GIT_CRED_STORE_FLAGS");
+            if (!String.IsNullOrEmpty(flags))
+            {
+                HashSet<string> splat = new HashSet<string>(flags.Split(','), StringComparer.OrdinalIgnoreCase);
+                if (splat.Contains("trace"))
+                {
+                    // DO NOT set useErrorStream to false. We don't want to pollute stdout with tracing
+                    // Because Git uses that pipe to communicate with us.
+                    Trace.Listeners.Add(new ConsoleTraceListener(useErrorStream: true));
+                }
+                if (splat.Contains("debug"))
+                {
+                    Debugger.Launch();
+                }
+            }
+
             var arguments = Arguments.Parse(ref args);
 
             if (arguments.Help)
@@ -34,6 +51,7 @@ namespace Git.Credential.WinStore
 
             if (args.Length == 0 || arguments.HasInstallParameter)
             {
+                Trace.TraceInformation("Entering Install Mode");
                 if (arguments.SilentMode)
                 {
                     Console.Out.WriteLine("Silently Installing...");
@@ -61,6 +79,7 @@ namespace Git.Credential.WinStore
                 WriteUsage();
                 return;
             }
+            Trace.TraceInformation("Executing command: '{0}'", command);
 
             IDictionary<string, string> response = command(parameters).ToDictionary(
                 t => t.Item1,
@@ -76,6 +95,7 @@ namespace Git.Credential.WinStore
             if (args.Length > 0 && args[0] == "-d")
             {
                 Console.Error.WriteLine("Launching debugger...");
+                Console.Error.WriteLine("Launched with args: {0}", String.Join(",", args));
                 Debugger.Launch();
                 args = args.Skip(1).ToArray();
             }
@@ -85,6 +105,7 @@ namespace Git.Credential.WinStore
         {
             foreach (var pair in response)
             {
+                Trace.TraceInformation("To Git: {0} = {1}", pair.Key, pair.Value);
                 Console.Write("{0}={1}\n", pair.Key, pair.Value);
             }
         }
@@ -101,6 +122,7 @@ namespace Git.Credential.WinStore
                 if (pair.Length == 2)
                 {
                     values[pair[0]] = pair[1];
+                    Trace.TraceInformation("From Git: {0} = {1}", pair[0], pair[1]);
                 }
             }
 
@@ -142,6 +164,7 @@ namespace Git.Credential.WinStore
                 pathToGit = paths.Select(path => Path.Combine(path, "git.exe"))
                                  .Where(File.Exists).FirstOrDefault();
             }
+            Trace.TraceInformation("Using Git Path: {0}", pathToGit);
 
             if (String.IsNullOrEmpty(pathToGit) || !File.Exists(pathToGit))
             {
@@ -176,11 +199,14 @@ namespace Git.Credential.WinStore
             var dest = new FileInfo(Environment.ExpandEnvironmentVariables(String.Concat(installPath, @"\git-credential-winstore.exe")));
             if (dest.Exists)
             {
+                Trace.TraceInformation("Found existing installation. Deleting");
                 dest.Delete();
             }
 
             File.Copy(Assembly.GetExecutingAssembly().Location, dest.FullName, true);
 
+            string args = String.Format("config --global credential.helper \"!'{0}'\"", dest.FullName);
+            Trace.TraceInformation("Execing: git {0}", args);
             Process.Start(pathToGit, String.Format("config --global credential.helper \"!'{0}'\"", dest.FullName));
         }
 
@@ -195,6 +221,7 @@ namespace Git.Credential.WinStore
 
             string userName = args.GetOrDefault("username", null);
             string password = null;
+            Trace.TraceInformation("Looking up credential for '{0}' on {1}", userName, url);
 
             var credPtr = IntPtr.Zero;
 
@@ -202,15 +229,19 @@ namespace Git.Credential.WinStore
             {
                 // Check for a credential
                 var target = GetTargetName(url);
+                Trace.TraceInformation("Credential Name: {0}", target);
 
                 if (!NativeMethods.CredRead(target, NativeMethods.CRED_TYPE.GENERIC, 0, out credPtr))
                 {
+                    Trace.TraceInformation("No credential found.");
                     // Don't have a credential for this user. Are we on XP? If so, sorry no dice.
                     if (OnXP())
                     {
+                        Trace.TraceInformation("Sorry XP user, we don't support you :(");
                         // Users will get a Git prompt for user name and password. We'll still store them.
                         yield break;
                     }
+                    Trace.TraceInformation("Prompting for creds.");
 
                     credPtr = IntPtr.Zero;
 
@@ -279,6 +310,8 @@ namespace Git.Credential.WinStore
                 }
                 else
                 {
+                    Trace.TraceInformation("Found a credential!");
+
                     // Decode the credential
                     NativeMethods.CREDENTIAL cred = (NativeMethods.CREDENTIAL)Marshal.PtrToStructure(credPtr, typeof(NativeMethods.CREDENTIAL));
                     userName = cred.userName;
@@ -396,6 +429,7 @@ namespace Git.Credential.WinStore
             if (!abort)
             {
                 var target = GetTargetName(url);
+                Trace.TraceInformation("Storing credentials for '{0}' on {1} in {2}", userName, url, target);
 
                 var cred = new NativeMethods.CREDENTIAL()
                 {
@@ -421,12 +455,17 @@ namespace Git.Credential.WinStore
         {
             var url = ExtractUrl(args);
 
+            Trace.TraceInformation("Erasing credentials for '{0}'", url);
             if (!NativeMethods.CredDelete(GetTargetName(url), NativeMethods.CRED_TYPE.GENERIC, 0))
             {
                 var errorCode = Marshal.GetLastWin32Error();
                 if (errorCode != 1168) // ERROR_NOT_FOUND ==> The credential doesn't exist, so no need to print the failure.
                 {
                     Console.Error.WriteLine("Failed to erase credential: {0}", GetErrorMessage(errorCode));
+                }
+                else
+                {
+                    Trace.TraceInformation("No credentials to erase!");
                 }
             }
 
