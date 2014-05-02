@@ -521,7 +521,8 @@ namespace Git.Credential.WinStore
 
         private static string GetTargetName(Uri url)
         {
-            return "git:" + url.AbsoluteUri;
+            // Trim the trailing slash, since that's what we've been doing previously and we don't want to break it.
+            return "git:" + url.AbsoluteUri.TrimEnd('/');
         }
     }
 }
