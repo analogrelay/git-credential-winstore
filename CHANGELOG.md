@@ -1,6 +1,11 @@
 # Changelog
 A reverse chronological list of the changes made in the project
 
+## Version 1.4 (Beta)
+* [Rob Mensching](https://www.codeplex.com/site/users/view/robmen) showed us how to Unicode properly and helped reformat the code
+* [Kiliman](https://www.codeplex.com/site/users/view/Kiliman) helped us understand the "useHttpPath" setting.
+* Added some tracing and other debugging tools.
+
 ## Version 1.3
 * Created this changelog ([Andrew Stanton-Nurse](http://twitter.com/anurse))
 * Reworked packaging a little ([Andrew Stanton-Nurse](http://twitter.com/anurse))
