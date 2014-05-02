@@ -274,7 +274,7 @@ namespace Git.Credential.WinStore
                         NativeMethods.CREDUI_INFO ui = new NativeMethods.CREDUI_INFO()
                         {
                             pszCaptionText = "Git Credentials",
-                            pszMessageText = "Enter your credentials for: " + GetHost(url)
+                            pszMessageText = "Enter your credentials for: " + url.AbsoluteUri
                         };
                         ui.cbSize = Marshal.SizeOf(ui);
 
@@ -502,6 +502,12 @@ namespace Git.Credential.WinStore
             var host = args.GetOrDefault("host", "no-host.git");
             var path = args.GetOrDefault("path", String.Empty);
 
+            // Strip ".git" off the path for consistency
+            if (path.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+            {
+                path = path.Substring(0, path.Length - 4);
+            }
+
             var candidateUrl = String.Format("{0}://{1}/{2}", scheme, host, path);
 
             Uri url = null;
@@ -515,12 +521,7 @@ namespace Git.Credential.WinStore
 
         private static string GetTargetName(Uri url)
         {
-            return "git:" + GetHost(url);
-        }
-
-        private static string GetHost(Uri url)
-        {
-            return url.GetComponents(UriComponents.SchemeAndServer, UriFormat.Unescaped);
+            return "git:" + url.AbsoluteUri;
         }
     }
 }
