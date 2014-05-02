@@ -105,15 +105,7 @@ namespace Git.Credential.WinStore
         {
             foreach (var pair in response)
             {
-                if (Trace.Listeners.Count > 0)
-                {
-                    string traceValue = pair.Value;
-                    if (String.Equals(pair.Key, "password", StringComparison.OrdinalIgnoreCase))
-                    {
-                        traceValue = "****";
-                    }
-                    Trace.TraceInformation("To Git: {0} = {1}", pair.Key, traceValue);
-                }
+                TraceParameter("To Git", pair.Key, pair.Value);
                 Console.Write("{0}={1}\n", pair.Key, pair.Value);
             }
         }
@@ -130,11 +122,24 @@ namespace Git.Credential.WinStore
                 if (pair.Length == 2)
                 {
                     values[pair[0]] = pair[1];
-                    Trace.TraceInformation("From Git: {0} = {1}", pair[0], pair[1]);
+                    TraceParameter("From Git", pair[0], pair[1]);
                 }
             }
 
             return values;
+        }
+
+        private static void TraceParameter(string prefix, string key, string value)
+        {
+            if (Trace.Listeners.Count > 0)
+            {
+                string traceValue = value;
+                if (String.Equals(key, "password", StringComparison.OrdinalIgnoreCase))
+                {
+                    traceValue = "****";
+                }
+                Trace.TraceInformation("{2}: {0} = {1}", key, traceValue, prefix);
+            }
         }
 
         private static void WriteUsage()
