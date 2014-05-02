@@ -423,7 +423,11 @@ namespace Git.Credential.WinStore
 
             if (!NativeMethods.CredDelete(GetTargetName(url), NativeMethods.CRED_TYPE.GENERIC, 0))
             {
-                Console.Error.WriteLine("Failed to erase credential: {0}", GetLastErrorMessage());
+                var errorCode = Marshal.GetLastWin32Error();
+                if (errorCode != 1168) // ERROR_NOT_FOUND ==> The credential doesn't exist, so no need to print the failure.
+                {
+                    Console.Error.WriteLine("Failed to erase credential: {0}", GetErrorMessage(errorCode));
+                }
             }
 
             yield break;
@@ -431,7 +435,12 @@ namespace Git.Credential.WinStore
 
         private static string GetLastErrorMessage()
         {
-            return new Win32Exception(Marshal.GetLastWin32Error()).Message;
+            return GetErrorMessage(Marshal.GetLastWin32Error());
+        }
+
+        private static string GetErrorMessage(int lastError)
+        {
+            return new Win32Exception(lastError).Message;
         }
 
         private static Uri ExtractUrl(IDictionary<string, string> args)

@@ -14,7 +14,7 @@ namespace Git.Credential.WinStore
         [DllImport("advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool CredRead(string target, CRED_TYPE type, int reservedFlag, out IntPtr credentialPtr);
 
-        [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode)]
+        [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool CredDelete(string target, CRED_TYPE type, int flags);
 
         [DllImport("advapi32.dll")]
